@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<style>
+
+body {
+  margin: 0;
+}
+
+</style>
+<body>
+<input type="text" id="numDisks" value="#disks...">
+<input type="text" id="epsilon" value="epsilon">
+
+<button onclick="scatter()">Scatter</button>
+
+<button onclick="findAllIntersect()">Show Intersecting</button>
+
+<div id="container"></div>
+
+<p id="test"> </p>
+
+<script>
+
+// if rad is 1 then k^2/pi --> O(k^2), if rad is 20 then k^2/pi*r^2 --> O(k^2)
+// probability that disk is not fully contained in cell < k*r*4/k^2 = 4r/k 
+// expected number of removed disks 4r*numDisks/k --> O(1/k)
+// 4r*numDisks/k = eps --> 4r*numDisks*eps = k
+
+var arr_circles = [];
+var radius = 10;
+var epsilon = 0.1;
+var numDisks = 10;
+var grid_width = 400;
+var grid_height = 300;
+var k = setK();
+
+var container = document.getElementById("container");
+container.style.border = "solid black";
+container.style.width = (grid_width*2)+"px";
+container.style.height = (grid_height*2)+"px";
+container.style.position = "relative";
+
+scatter();
+
+function setK(){
+    return 4*radius*numDisks*epsilon;
+}
+
+function scatter(){
+
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    if( !isNaN(document.getElementById("numDisks").value) ) 
+        numDisks = document.getElementById("numDisks").value;
+    if( !isNaN(document.getElementById("epsilon").value) ) 
+        epsilon = document.getElementById("epsilon").value;
+
+    k = setK();
+    console.log(k);
+
+    //create grid
+    for(var i = 0; i < grid_width*2/k; i++){
+        for(var j = 0; j < grid_height*2/k; j++){
+        var cell = document.createElement('div');
+        cell.style.boxSizing = "border-box";
+        cell.style.height = k + 'px';
+        cell.style.width = k + 'px';
+        cell.style.border = "1px solid black";
+        cell.style.float = "left";
+        cell.style.position = "relative";
+        container.appendChild(cell);
+       }
+    }
+
+    
+
+    arr_circles = [];
+    
+    for(i = 0; i < numDisks; i++){
+        var circle = document.createElement('circle');
+        circle.style.cssText = 'border-radius: 50%; position: absolute; text-align: center; color: red;';
+        circle.style.border = "2px solid black";
+        circle.style.width = radius*2 + "px";
+        circle.style.height = radius*2 + "px";
+        circle.style.background = "#"+((1<<24)*Math.random()|0).toString(16);
+        circle.style.left = Math.round(Math.random() * (grid_width - radius*2.5) + radius) + "px";
+        circle.style.top = Math.round(Math.random() * (grid_height - radius*2.5) + radius) + "px";
+        arr_circles.push(circle);
+        container.appendChild(circle);
+        dragElement(circle);
+
+
+    }
+
+    //randomShift();
+    //shift()
+    
+    //Make the DIV element draggagle:
+    //dragElement(document.getElementById(("circle")));
+
+    function dragElement(elmnt) {
+      var pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
+      elmnt.onmousedown = dragMouseDown;
+      
+
+        function dragMouseDown(e) {
+            e = e || window.event;
+            // get the mouse cursor position at startup:
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            document.onmouseup = closeDragElement;
+            // call a function whenever the cursor moves:
+            document.onmousemove = elementDrag;
+        }
+
+        function elementDrag(e) {
+            e = e || window.event;
+            // calculate the new cursor position:
+            pos1 = pos3 - e.clientX;
+            pos2 = pos4 - e.clientY;
+            pos3 = e.clientX;
+            pos4 = e.clientY;
+            // set the element's new position:
+            elmnt.style.top = (elmnt.offsetTop - pos2) + "px";
+            elmnt.style.left = (elmnt.offsetLeft - pos1) + "px";
+        }
+
+        function closeDragElement() {
+            /* stop moving when mouse button is released:*/
+            document.onmouseup = null;
+            document.onmousemove = null;
+            //document.getElementById("test").innerHTML = returnCenter(elmnt) + "  " + checkIntersect(circle);
+        }
+
+    }
+}
+
+//circle center top + 20, left + 20
+
+function returnCenter(circle){
+    var style = window.getComputedStyle(circle);
+    var left_val = parseInt(style.getPropertyValue("left").slice(0, -2));
+    var top_val = parseInt(style.getPropertyValue("top").slice(0, -2)); 
+    return [left_val+radius, top_val+radius]
+}
+
+function checkIntersect(circle){
+    var center = returnCenter(circle);
+    var rem_x = center[0]%k;
+    var rem_y = center[1]%k;
+    console.log(center, k, rem_x, rem_y);
+    if(rem_x > k-radius || rem_x < radius || rem_y > k-radius || rem_y < radius)
+        return 1
+    else
+        return 0
+}
+
+function findAllIntersect(){
+    for(i = 0; i < arr_circles.length; i++){
+        circle = arr_circles[i];
+        console.log(circle);
+        if(checkIntersect(circle)){
+            circle.style.background = "black";
+            circle.style.border = "3px solid red";
+        }else if(circle.style.background == "black"){
+            circle.style.background = "#"+((1<<24)*Math.random()|0).toString(16);
+            circle.style.border = "2px solid black";
+        }
+    }
+}
+// function shift(){
+//     var circle = arr_circles[0];
+//     var style = window.getComputedStyle(circle);
+//     var left_val = parseInt(style.getPropertyValue("left").slice(0, -2));
+//     var top_val = parseInt(style.getPropertyValue("top").slice(0, -2)); 
+//     circle.style.left = k - radius + "px";
+//     circle.style.top = k - radius + "px";
+//     var center_coordinate = returnCenter(circle);
+//     console.log("center is ", center_coordinate[0], center_coordinate[1]);
+// }
+
+function randomShift(){
+    var min_x = 1;
+    var max_x = grid_width - radius - 1;
+
+    var min_y = 1;
+    var max_y = grid_height - radius - 1;
+
+    var shift_x = Math.random() * (max_x - min_x) + min_x;
+    var shift_y = Math.random() * (max_y - min_y) + min_y;
+
+    console.log(shift_y, shift_x);
+
+    for(i = 0; i < arr_circles.length; i++){
+        var circle = arr_circles[i];
+        var style = window.getComputedStyle(circle);
+        var left_val = parseInt(style.getPropertyValue("left").slice(0, -2));
+        var top_val = parseInt(style.getPropertyValue("top").slice(0, -2)); 
+        circle.style.left = left_val + shift_x + "px";
+        circle.style.top = top_val + shift_y + "px";
+    }
+}
+
+</script>
+
+</body>
+</html>
+
