@@ -8,12 +8,24 @@ body {
 
 </style>
 <body>
-<input type="text" id="numDisks" value="#disks...">
-<input type="text" id="epsilon" value="epsilon">
+<label for="male">Num of disks:</label><input type="text" style="width: 70px" id="numDisks" value="15">
+<label for="male">Epsilon</label><input type="text" style="width: 70px" id="epsilon" value="0.1">
+<label for="male">Width</label><input type="text" style="width: 70px" id="width" value="width">
+<label for="male">Height</label><input type="text" style="width: 70px" id="height" value="height">
+<label for="male">Radius</label><input type="text" style="width: 70px" id="radius" value="10">
 
 <button onclick="scatter()">Scatter</button>
 
-<button onclick="findAllIntersect()">Show Intersecting</button>
+<p id="test"> </p>
+
+
+<button onclick="findAllIntersect()">Show Intersected</button>
+<button onclick="deleteIntersected()">Delete Intersected</button>
+
+<p style="display:inline"> Disks deleted: </p>
+<p style="display:inline" id="del_disks"></p>
+<p style="display:inline; padding: 20px"> MIS error: </p>
+<p style="display:inline" id="error"></p>
 
 <div id="container"></div>
 
@@ -21,29 +33,32 @@ body {
 
 <script>
 
-// if rad is 1 then k^2/pi --> O(k^2), if rad is 20 then k^2/pi*r^2 --> O(k^2)
-// probability that disk is not fully contained in cell < k*r*4/k^2 = 4r/k 
-// expected number of removed disks 4r*numDisks/k --> O(1/k)
-// 4r*numDisks/k = eps --> 4r*numDisks*eps = k
-
+// clear correlation between grid size and number of disks...
+var c = 1.5;
 var arr_circles = [];
 var radius = 10;
-var epsilon = 0.1;
-var numDisks = 10;
-var grid_width = 400;
-var grid_height = 300;
-var k = setK();
+var epsilon = 0.2;
+var numDisks = 500;
+var grid_width = Math.ceil(window.innerWidth/2);
+var grid_height = Math.ceil(window.innerHeight/2);
+var k = 0;
+var numDeleted = 0;
+
+document.getElementById("height").value = grid_height;
+document.getElementById("width").value = grid_width;
+document.getElementById("numDisks").value = numDisks;
+document.getElementById("epsilon").value = epsilon;
+document.getElementById("radius").value = radius;
 
 var container = document.getElementById("container");
-container.style.border = "solid black";
-container.style.width = (grid_width*2)+"px";
-container.style.height = (grid_height*2)+"px";
 container.style.position = "relative";
+console.log(window.innerWidth);
+console.log(window.innerHeight);
 
 scatter();
 
 function setK(){
-    return 4*radius*numDisks*epsilon;
+    return (4*radius/epsilon); 
 }
 
 function scatter(){
@@ -52,36 +67,47 @@ function scatter(){
         container.removeChild(container.firstChild);
     }
 
-    if( !isNaN(document.getElementById("numDisks").value) ) 
-        numDisks = document.getElementById("numDisks").value;
-    if( !isNaN(document.getElementById("epsilon").value) ) 
-        epsilon = document.getElementById("epsilon").value;
+    var input_disks = document.getElementById("numDisks").value;
+    var input_epsilon = document.getElementById("epsilon").value;
+    var input_width = document.getElementById("width").value;
+    var input_height = document.getElementById("height").value;
+    var input_radius = document.getElementById("radius").value;
+
+    if( !isNaN(input_disks) ) 
+        numDisks = Math.ceil(parseFloat(input_disks));
+    if( !isNaN(input_epsilon) ) 
+        epsilon = parseFloat(input_epsilon);
+    if( !isNaN(input_height) && input_height/window.innerHeight > 0.1 ) 
+        grid_height = Math.ceil(parseFloat(input_height));
+    if( !isNaN(input_width) && input_width/window.innerWidth > 0.1) 
+        grid_width = Math.ceil(parseFloat(input_width));
+    if( !isNaN(input_radius)) 
+        radius = Math.ceil(parseInt(input_radius));
+    numDeleted = 0;
 
     k = setK();
     console.log(k);
 
     //create grid
-    for(var i = 0; i < grid_width*2/k; i++){
-        for(var j = 0; j < grid_height*2/k; j++){
+    for(var i = 0; i < window.innerWidth/k; i++){
+        for(var j = 0; j < window.innerHeight/k; j++){
         var cell = document.createElement('div');
         cell.style.boxSizing = "border-box";
         cell.style.height = k + 'px';
         cell.style.width = k + 'px';
-        cell.style.border = "1px solid black";
+        cell.style.border = "1px solid #D3D3D3";
         cell.style.float = "left";
         cell.style.position = "relative";
         container.appendChild(cell);
        }
-    }
-
-    
+    }    
 
     arr_circles = [];
     
     for(i = 0; i < numDisks; i++){
         var circle = document.createElement('circle');
         circle.style.cssText = 'border-radius: 50%; position: absolute; text-align: center; color: red;';
-        circle.style.border = "2px solid black";
+        //circle.style.border = "2px solid black";
         circle.style.width = radius*2 + "px";
         circle.style.height = radius*2 + "px";
         circle.style.background = "#"+((1<<24)*Math.random()|0).toString(16);
@@ -131,7 +157,7 @@ function scatter(){
             /* stop moving when mouse button is released:*/
             document.onmouseup = null;
             document.onmousemove = null;
-            //document.getElementById("test").innerHTML = returnCenter(elmnt) + "  " + checkIntersect(circle);
+            document.getElementById("test").innerHTML = returnCenter(elmnt) + "  " + checkIntersect(circle);
         }
 
     }
@@ -143,7 +169,7 @@ function returnCenter(circle){
     var style = window.getComputedStyle(circle);
     var left_val = parseInt(style.getPropertyValue("left").slice(0, -2));
     var top_val = parseInt(style.getPropertyValue("top").slice(0, -2)); 
-    return [left_val+radius, top_val+radius]
+    return [left_val+radius, top_val+radius];
 }
 
 function checkIntersect(circle){
@@ -160,15 +186,28 @@ function checkIntersect(circle){
 function findAllIntersect(){
     for(i = 0; i < arr_circles.length; i++){
         circle = arr_circles[i];
-        console.log(circle);
+        //console.log(circle);
         if(checkIntersect(circle)){
             circle.style.background = "black";
             circle.style.border = "3px solid red";
         }else if(circle.style.background == "black"){
             circle.style.background = "#"+((1<<24)*Math.random()|0).toString(16);
-            circle.style.border = "2px solid black";
+            //circle.style.border = "2px solid black";
         }
     }
+}
+
+function deleteIntersected(){
+    for(i = 0; i < arr_circles.length; i++){
+        circle = arr_circles[i];
+        if(checkIntersect(circle)){
+            numDeleted += 1;
+            arr_circles.slice(i, 1);
+            container.removeChild(circle);
+        }
+    } 
+    document.getElementById("del_disks").innerHTML = Math.floor((numDeleted/numDisks)*100) + "%";
+
 }
 // function shift(){
 //     var circle = arr_circles[0];
