@@ -21,9 +21,12 @@ body {
 
 <button onclick="findAllIntersect()">Show Intersected</button>
 <button onclick="deleteIntersected()">Delete Intersected</button>
+<button onclick="calculateMIS()">Get MIS</button>
 
 <p style="display:inline"> Disks deleted: </p>
 <p style="display:inline" id="del_disks"></p>
+<p style="display:inline; padding: 20px"> MIS: </p>
+<p style="display:inline" id="mis"></p>
 <p style="display:inline; padding: 20px"> MIS error: </p>
 <p style="display:inline" id="error"></p>
 
@@ -37,8 +40,8 @@ body {
 var c = 1.5;
 var arr_circles = [];
 var radius = 10;
-var epsilon = 0.2;
-var numDisks = 500;
+var epsilon = 0.4;
+var numDisks = 15;
 var grid_width = Math.ceil(window.innerWidth/2);
 var grid_height = Math.ceil(window.innerHeight/2);
 var k = 0;
@@ -52,13 +55,101 @@ document.getElementById("radius").value = radius;
 
 var container = document.getElementById("container");
 container.style.position = "relative";
-console.log(window.innerWidth);
-console.log(window.innerHeight);
+
 
 scatter();
 
 function setK(){
     return (4*radius/epsilon); 
+}
+
+
+function calculateMIS(){
+    deleteIntersected();
+    document.getElementById("mis").innerHTML = calcMIS();
+
+}
+
+function cellMIS(i, j){
+    var x_min = i * k;
+    var y_min = j * k;
+    var bucket = [];
+
+    for(idx = 0; idx < arr_circles.length; idx ++){
+        var circle = arr_circles[idx];
+        var center = returnCenter(circle);
+        if(center[0] >= x_min 
+            && center[0] < x_min + k 
+            && center[1] >= y_min 
+            && center[1] < y_min + k){
+
+            bucket.push(circle);
+        }
+    }
+
+    return calculateMISinBucket(bucket);
+
+}
+
+function calcMIS(i = -1, j = -1){
+
+    if(i < 0){
+        var width_num_cells = grid_width/k;
+        var height_num_cells = grid_height/k;
+        var totalMIS = 0;
+
+        for(i = 1; i <= width_num_cells; i++){
+            for(j = 1; j <= height_num_cells; j++){       
+                totalMIS += cellMIS(i, j);
+            }
+        }
+        return totalMIS;
+    }else{
+        return cellMIS(i, j);
+    }
+}
+
+function* subsets(array, offset = 0) {
+  while (offset < array.length) {
+    let first = array[offset++];
+    for (let subset of subsets(array, offset)) {
+      subset.push(first);
+      yield subset;
+    }
+  }
+  yield [];
+}
+
+function calculateMISinBucket(bucket){
+    var mis_bucket = 0;
+    var flag = false;
+    var arr = Array.from(Array(bucket.length).keys())
+
+    for (let subset of subsets(arr)) {
+        flag = false;
+        for(i = 0; i < subset.length; i++){
+            for(j = 0; j < subset.length; j++){
+                var c1 = returnCenter(bucket[i]);
+                var c2 = returnCenter(bucket[j]);
+                var intersects = Math.hypot(c1[0]-c2[0], c1[1]-c2[1]) <= (2*radius);
+
+                console.log("YO");
+                if(intersects){
+                    console.log("TRUE");
+                    flag = true;
+                    break;
+                }
+            }
+
+            if(flag) break;
+        }
+        if(!flag && subset.length > mis_bucket)
+            mis_bucket = subset.length;
+
+
+    }
+    console.log("---->>>" + mis_bucket);
+    return mis_bucket;
 }
 
 function scatter(){
@@ -86,7 +177,6 @@ function scatter(){
     numDeleted = 0;
 
     k = setK();
-    console.log(k);
 
     //create grid
     for(var i = 0; i < window.innerWidth/k; i++){
@@ -167,8 +257,8 @@ function scatter(){
 
 function returnCenter(circle){
     var style = window.getComputedStyle(circle);
-    var left_val = parseInt(style.getPropertyValue("left").slice(0, -2));
-    var top_val = parseInt(style.getPropertyValue("top").slice(0, -2)); 
+    var left_val = parseFloat(style.getPropertyValue("left").slice(0, -2));
+    var top_val = parseFloat(style.getPropertyValue("top").slice(0, -2)); 
     return [left_val+radius, top_val+radius];
 }
 
@@ -176,7 +266,6 @@ function checkIntersect(circle){
     var center = returnCenter(circle);
     var rem_x = center[0]%k;
     var rem_y = center[1]%k;
-    console.log(center, k, rem_x, rem_y);
     if(rem_x > k-radius || rem_x < radius || rem_y > k-radius || rem_y < radius)
         return 1
     else
@@ -220,6 +309,8 @@ function deleteIntersected(){
 //     console.log("center is ", center_coordinate[0], center_coordinate[1]);
 // }
 
+
+
 function randomShift(){
     var min_x = 1;
     var max_x = grid_width - radius - 1;
@@ -230,7 +321,6 @@ function randomShift(){
     var shift_x = Math.random() * (max_x - min_x) + min_x;
     var shift_y = Math.random() * (max_y - min_y) + min_y;
 
-    console.log(shift_y, shift_x);
 
     for(i = 0; i < arr_circles.length; i++){
         var circle = arr_circles[i];
